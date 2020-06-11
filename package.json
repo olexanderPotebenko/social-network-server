@@ -1,0 +1,19 @@
+{
+  "name": "social-network-server",
+  "version": "1.0.0",
+  "description": "This is webserver for a social network",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon ./lib/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/olexanderPotebenko/social-network-server.git"
+  },
+  "author": "olexanderPotebenko",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/olexanderPotebenko/social-network-server/issues"
+  },
+  "homepage": "https://github.com/olexanderPotebenko/social-network-server#readme"
+}
