@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/olexanderPotebenko/social-network-server/issues"
   },
-  "homepage": "https://github.com/olexanderPotebenko/social-network-server#readme"
+  "homepage": "https://github.com/olexanderPotebenko/social-network-server#readme",
+  "dependencies": {
+    "mongoose": "^5.9.18"
+  }
 }
