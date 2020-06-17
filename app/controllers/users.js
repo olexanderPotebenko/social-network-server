@@ -4,11 +4,15 @@ const mongoose = require('mongoose');
 const User = mongoose.model('User');
 
 const getAll = (req, res) => {
+    //User.remove({}, ()=>{});
     User.find().exec()
         .then(users => {
             res.writeHead(200, {'Content-Type': 'application/json'});
-            console.log(users);
-            res.end(JSON.stringify(users));
+            let data = {
+                items: users,
+                totalCount: users.length,
+            };
+            res.end(JSON.stringify(data));
         })
         .catch(err => {
             res.writeHead(500, {'Content-Type': 'text/plain'});
@@ -17,16 +21,31 @@ const getAll = (req, res) => {
 };
 
 const getOne = (req, res) => {
-        let params = url.parse(req.url, true).query;
-    console.log({id: params.id});
-    User.find({id: params.id}).exec()
+    let user_id = url.parse(req.url, true).pathname.split('/')
+        .filter(str => str === '' ? false: true)[1];
+    User.findById(user_id).exec()
         .then(user => {
-            res.writeHead(200, {'Content-Type': 'application/json'});
-            res.end(JSON.stringify(user));
+            if(user){
+                res.writeHead(200, {'Content-Type': 'application/json'});
+                let data = {
+                    name: user.name,
+                    id: user._id,
+                    photos: user.photos,
+                    subscribed_to: user.subscribed_to,
+                    email: user.email,
+                    subscribers: user.subscribers,
+                    status: user.status,
+                };
+                res.end(JSON.stringify({data: data, status_code: 0}));
+            }else{
+                res.writeHead(401, {'Content-Type': 'application/json'});
+                res.end(JSON.stringify({message: 'this user was not found', status_code: 1}));
+            };
         })
         .catch(err => {
+            console.log('error');
             res.writeHead(500, {'Content-Type': 'text/plain'});
-            res.end(JSON.stringify(err));
+            res.end(JSON.stringify({message: err, status_code: 1}));
         });
 };
 
@@ -44,7 +63,7 @@ const create = (req, res) => {
             }).catch(err => {
                 console.log(err);
                 res.writeHead(500, {'Content-Type': 'text/plain'});
-            res.end(JSON.stringify(err));
+                res.end(JSON.stringify(err));
             });
     });
 

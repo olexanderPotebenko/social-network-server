@@ -20,13 +20,22 @@ const signIn = (req, res) => {
                     res.writeHead(401, {'Content-Type': 'application/json'});
                     res.end(JSON.stringify({message: 'User does not exit!!!'}));
                 };
-                console.log(user);
-                console.log(password + ' ' + user.password);
                 const is_valid = bcrypt.compareSync(password, user.password);
-                if(!is_valid){
+                if(is_valid){
                     const token = jwt.sign(user._id.toString(), config.secret_jwt);
-                    console.log(token);
-                    res.end(JSON.stringify({token: token}));
+                    console.log(`user ${user.name} is authorized`);
+                    console.log('token: ' + token);
+                    res.end(JSON.stringify({
+                        data: {
+                            id: user._id,
+                            email: user.email,
+                            name: user.name,
+                            photo: user.photos.small,
+                            token: token,
+                        },
+                        message: 'successfully',
+                        status_code: 0,
+                    }));
                 }else{
                     res.writeHead(401, {'Content-Type': 'application/json'});
                     res.end(JSON.stringify({message: 'Invalid credentials'}));

@@ -10,7 +10,7 @@ const UserSchema = new mongoose.Schema({
       },
       status: String,
     subscribed_to: Array,
-    subscribrs: Array, 
+    subscribers: Array, 
 });
 mongoose.model('User', UserSchema);
 
