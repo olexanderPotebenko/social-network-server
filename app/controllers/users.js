@@ -124,10 +124,67 @@ const remove = (req, res) => {
         });
 };
 
+// follow
+
+
+const follow = (req, res) => {
+    let routs = url.parse(req.url, true).pathname.split('/')
+        .filter(rout => rout === '' ? false: true);
+
+    if(true){
+
+        console.log(routs[1]);
+        Promise.all([
+            User.findById(routs[1])
+            .exec()
+            .then( user => {
+                return Promise.resolve(user.subscribers); 
+            }),
+
+            User.findById(req.headers.id)
+            .exec()
+            .then( user => Promise.resolve(user.subscribed_to) ), 
+        ])
+            .then(data => {
+                if( !data[0].includes(req.headers.id) ){
+                    data[0].push(req.headers.id);
+                    let subscribers = [...data[0]];
+                    data[1].push(routs[1]);
+                    let subscribed_to = [...data[1]];
+
+                    Promise.all([
+                        User.findByIdAndUpdate(routs[1], {subscribers})
+                        .exec()
+                        .then( user => Promise.resolve() ),
+
+                        User.findByIdAndUpdate(req.headers.id, {subscribed_to})
+                        .exec()
+                        .then( user => Promise.resolve() ),
+                    ]).then( resolve => {
+                        res.writeHead(200, {'Content-Type': 'application/json'});
+                        res.end( JSON.stringify({result_code: 0, 
+                            message: `user Vasya has successfully subscribed to user petya`}) );
+                    });
+                }else{
+                    res.writeHead(401, {'Content-Type': 'application/json'});
+                    res.end( JSON.stringify({result_code: 1, 
+                        message: `you are already subscribed to this user`}) );
+                };
+                //                let subscribers = [req.headers.id];
+                //                let subscribed_to = [routs[1]];
+
+            });
+    }else{
+        res.writeHead(401, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify({message: 'you must log in', result_code: 1}));
+    }
+};
+
 module.exports = {
     create,
     getOne,
     getSomething,
     update,
     remove,
+    follow,
 };
