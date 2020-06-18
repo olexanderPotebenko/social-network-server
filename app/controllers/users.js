@@ -3,18 +3,41 @@ const mongoose = require('mongoose');
 
 const User = mongoose.model('User');
 
-const getAll = (req, res) => {
+const getSomething = (req, res) => {
+
+    let params = url.parse(req.url, true).query;
     //User.remove({}, ()=>{});
     User.find().exec()
         .then(users => {
+            let users_parts = [];
+            let start = Math.floor( (params.page - 1) * (params.count));
+            let end = start + +params.count;
+            if(start > users.length || Object.keys(params).length < 2)
+                users_parts = users.slice(-5);
+            else if(end >= users.length){
+                users_parts = users.slice(start, users.length);
+            }else
+                users_parts = users.slice(start, end);
             res.writeHead(200, {'Content-Type': 'application/json'});
+            users_parts = users_parts.map((user, i) => {
+                return {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    photos: user.photos,
+                    status: user.status,
+                    subscribed_to: user.subscribed_to,
+                    subscribers: user.subscribers,
+                };
+            });
             let data = {
-                items: users,
+                items: users_parts,
                 totalCount: users.length,
             };
             res.end(JSON.stringify(data));
         })
         .catch(err => {
+            console.log(err);
             res.writeHead(500, {'Content-Type': 'text/plain'});
             res.end(JSON.stringify(err));
         });
@@ -104,7 +127,7 @@ const remove = (req, res) => {
 module.exports = {
     create,
     getOne,
-    getAll,
+    getSomething,
     update,
     remove,
 };
