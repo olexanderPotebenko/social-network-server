@@ -17,14 +17,14 @@ const signIn = (req, res) => {
             .exec()
             .then(user => {
                 if(!user){
-                    res.writeHead(401, {'Content-Type': 'application/json'});
-                    res.end(JSON.stringify({message: 'User does not exit!!!'}));
+                    res.end(JSON.stringify({message: 'User does not exit!!!',
+                        result_code: 1}));
+                    return;
                 };
                 const is_valid = bcrypt.compareSync(password, user.password);
                 if(is_valid){
                     const token = jwt.sign(user._id.toString(), config.secret_jwt);
                     console.log(`user ${user.name} is authorized`);
-                    console.log('token: ' + token);
                     res.end(JSON.stringify({
                         data: {
                             id: user._id,
@@ -34,29 +34,29 @@ const signIn = (req, res) => {
                             token: token,
                         },
                         message: 'successfully',
-                        status_code: 0,
+                        result_code: 0,
                     }));
                 }else{
-                    res.writeHead(401, {'Content-Type': 'application/json'});
-                    res.end(JSON.stringify({message: 'Invalid credentials'}));
+                    res.end(JSON.stringify({message: 'Invalid credentials', result_code: 1}));
                 };
             })
             .catch(err => {
 
                 console.log(err);
-                res.writeHead(500, {'Content-Type': 'application/json'});
-                res.end(JSON.stringify({message: err}));
+                res.end(JSON.stringify({message: err, result_code: 1}));
             });
     });
 };
 
 const signUp = (req, res) => {
+    console.log('111111');
     let data = [];
     req.on('data', chunk => {
         data.push(chunk)}) ;
     req.on('end', () => {
         data = JSON.parse(data);
         //проверка пришедших данных на валидность
+        console.log(data);
         let is_valid = true;
         if(data.first_name == '' || data.first_name == undefined ||
             data.last_name == '' || data.last_name == undefined ||
@@ -72,47 +72,50 @@ const signUp = (req, res) => {
                     //проверка на наличие в базе пользователя с таким же email
                     if(!user){
                         User.create({
-                            ...data,
                             password: bcrypt.hashSync(data.password, 10),
                             name: data.first_name + data.last_name,
+                            email: data.email,
                             photos: {
                                 small: '',
                                 large: '', 
                             },
+                            phone: '',
+                            country: '',
+                            city: '',
                             status: '',
                             subscribed_to: [],
                             subscribrs: [], 
+                            dialogs: [],
+                            posts: [],
+                            date: +new Date(),
+                            birthday: '',
 
                         }).then(user => {
-                            console.log(user);
                             console.log(`user ${user.name} has been successfully registered`);
                     res.writeHead(200, {'Content-Type': 'application/json'});
                             res.end(JSON.stringify({message: `user ${user.name} has been successfully registered`,
-                                status_code: 0,
+                                result_code: 0,
                             }))
                         }).catch(err => {
                             console.log(err);
-                    res.writeHead(401, {'Content-Type': 'application/json'});
-                            res.end(JSON.stringify({ message: err, status_code: 1, }))
+                            res.end(JSON.stringify({ message: err, result_code: 1, }))
                         });
                     }else{
                         console.log('This email address is reserved by another user');
-                    res.writeHead(401, {'Content-Type': 'application/json'});
                         res.end(JSON.stringify({
-                            message: 'This email address is reserved by another user'
+                            message: 'This email address is reserved by another user',
+                            result_code: 1
                         }))
                     };
                 }).catch(err => {
                     console.log(err);
-                    res.writeHead(500, {'Content-Type': 'application/json'});
-                    res.end(JSON.stringify({message: err, status_code: 1}));
+                    res.end(JSON.stringify({message: err.message, result_code: 1}));
                 });
 
         }else{
             console.log('data is not a valid');
-            res.writeHead(401, {'Content-Type': 'application/json'});
             res.end(JSON.stringify({
-                status_code: 1,
+                result_code: 1,
                 message: 'data is not a valid'}
             ));
         };

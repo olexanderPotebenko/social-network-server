@@ -19,7 +19,6 @@ const getFew = (req, res) => {
                 users_parts = users.slice(start, users.length);
             }else
                 users_parts = users.slice(start, end);
-            res.writeHead(200, {'Content-Type': 'application/json'});
             users_parts = users_parts.map((user, i) => {
                 return {
                     id: user._id,
@@ -34,7 +33,9 @@ const getFew = (req, res) => {
             let data = {
                 items: users_parts,
                 totalCount: users.length,
+                result_code: 0,
             };
+            res.writeHead(200, {'Content-Type': 'application/json'});
             res.end(JSON.stringify(data));
         })
         .catch(err => {
@@ -50,7 +51,6 @@ const getOne = (req, res) => {
     User.findById(user_id).exec()
         .then(user => {
             if(user){
-                res.writeHead(200, {'Content-Type': 'application/json'});
                 let data = {
                     name: user.name,
                     id: user._id,
@@ -59,17 +59,18 @@ const getOne = (req, res) => {
                     email: user.email,
                     subscribers: user.subscribers,
                     status: user.status,
+                    result_code: 0,
                 };
-                res.end(JSON.stringify({data: data, status_code: 0}));
+                res.end(JSON.stringify({data: data}));
             }else{
                 res.writeHead(401, {'Content-Type': 'application/json'});
                 res.end(JSON.stringify({message: 'this user was not found', status_code: 1}));
             };
         })
         .catch(err => {
-            console.log('error');
+            console.log(err.message);
             res.writeHead(500, {'Content-Type': 'text/plain'});
-            res.end(JSON.stringify({message: err, status_code: 1}));
+            res.end(JSON.stringify({message: err.message, status_code: 1}));
         });
 };
 
@@ -130,8 +131,6 @@ const remove = (req, res) => {
 //get users data
 
 const getFewAuthorized = (req, res) => {
-    console.log('followed!!!!');
-    console.log(req.headers.authorize);
 
     let params = url.parse(req.url, true).query;
     //User.remove({}, ()=>{});
@@ -187,17 +186,18 @@ const getOneAuthorized = (req, res) => {
                     email: user.email,
                     subscribers: user.subscribers,
                     status: user.status,
+                    result_code: 0,
                 };
-                res.end(JSON.stringify({data: data, status_code: 0}));
+                res.end(JSON.stringify({data}));
             }else{
                 res.writeHead(401, {'Content-Type': 'application/json'});
                 res.end(JSON.stringify({message: 'this user was not found', status_code: 1}));
             };
         })
         .catch(err => {
-            console.log('error');
+            console.log(err.message);
             res.writeHead(500, {'Content-Type': 'text/plain'});
-            res.end(JSON.stringify({message: err, status_code: 1}));
+            res.end(JSON.stringify({message: err.message, status_code: 1}));
         });
 };
 
@@ -293,13 +293,57 @@ const unfollow = (req, res) => {
         });
 };
 
+const getPosts = (req, res) => {
+    //`profile/${user_id}/posts/?page=${page}&count=&{count}`)  
+
+    let routs = url.parse(req.url, true).pathname.split('/')
+        .filter(rout => rout !== '' );
+    let params = url.parse(req.url, true).query;
+
+    User.findById(routs[1])
+        .exec()
+        .then( user => {
+
+            if(user != null) {
+
+            let posts = user.posts;
+            let posts_parts = [];
+            let start = Math.floor( (params.page - 1) * (params.count));
+            let end = start + +params.count;
+            if(start > posts.length || Object.keys(params).length < 2)
+                posts_parts = posts.slice(-5);
+            else if(end >= posts.length){
+                posts_parts = posts.slice(start, posts.length);
+            }else
+                posts_parts = posts.slice(start, end);
+
+            let data = {
+                result_code: 0, 
+                posts: posts.length && posts || ['nihuya'],
+            };
+
+            res.writeHead(200, {'Content-Type': 'application/json'});
+            res.end( JSON.stringify(data) );
+
+            }else{
+                res.end( JSON.stringify({result_code: 1, message: 'this user was not found'}) );
+            };
+        })
+        .catch( err => {
+            res.end( JSON.stringify({result_code: 1, message: err.message}) );
+        })
+
+};
+
+
 
 module.exports = {
     create,
-    getOne: authMiddleware(() => {}, getOne),
+    getOne: authMiddleware(getOneAuthorized, getOne),
     getFew: authMiddleware(getFewAuthorized, getFew),
     update,
     remove,
     follow: authMiddleware(follow),
     unfollow: authMiddleware(unfollow),
+    getPosts,
 };
