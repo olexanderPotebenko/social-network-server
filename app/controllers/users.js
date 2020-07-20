@@ -1,7 +1,9 @@
 const url = require('url');
+const fs = require('fs');
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const authMiddleware = require('../middleware/auth.js');
+const formidable = require('formidable');
 
 // *** not requiring authorization ***
 const getFew = (req, res) => {
@@ -335,7 +337,7 @@ const getPosts = (req, res) => {
 
 };
 
-let createPost = (req, res) => {
+/*let createPost = (req, res) => {
 
     let routs = url.parse(req.url, true).pathname.split('/')
         .filter(rout => rout !== '' );
@@ -344,7 +346,6 @@ let createPost = (req, res) => {
         data.push(chunk);
     });
     req.on('end', () => {
-        data = JSON.parse(data);
 
         User.findById(routs[1])
             .exec()
@@ -354,12 +355,15 @@ let createPost = (req, res) => {
 
                     return;
                 }else{
+                    console.log(data);
                     let post = {
-                        date: +new Date(), text: data.post, likes: 0,
+                        date: +new Date(), 
+                        text: data.post.text,
+                        picture: data.post.picture,
+                        likes: [],
                         id: Math.floor( (Math.random() + Math.random()) * 1000000), 
                         comments: [],
                     };
-                    console.log(post);
                     let posts = user.posts;
                     posts.push(post);
 
@@ -367,7 +371,6 @@ let createPost = (req, res) => {
                         .exec()
                         .then(
                             user => {
-                                console.log(user);
                                 res.writeHead(200, {'Content-Type': 'application/json'});
                                 res.end( JSON.stringify({
                                     result_code: 0, message: 'Post success added',
@@ -381,6 +384,66 @@ let createPost = (req, res) => {
 
     });
 };
+*/
+
+let createPost = (req, res) => {
+
+
+    try{
+        let form = new formidable.IncomingForm();
+        form.parse(req, function (err, fields, files) {
+
+            let oldpath = files.image['path'];
+            let name = `${Math.floor(Math.random() * 100000)}.` + files.image['name'].split('.')[1];
+            let newpath = __dirname + '/../../images/posts/' + name;
+
+            fs.rename(oldpath, newpath, function (err) {
+                if (err) throw err;
+
+                let routs = url.parse(req.url, true).pathname.split('/')
+                    .filter(rout => rout !== '' );
+
+                    User.findById(routs[1])
+                        .exec()
+                        .then(user => {
+                            if(user === null){
+                                res.end( JSON.stringify({result_code: 1, message: 'this user was not found'}) );
+
+                                return;
+                            }else{
+                                let post = {
+                                    date: +new Date(), 
+                                    text: fields.text,
+                                    picture: name,
+                                    likes: [],
+                                    id: Math.floor( (Math.random() + Math.random()) * 1000000), 
+                                    comments: [],
+                                };
+                                let posts = user.posts;
+                                posts.push(post);
+
+                                User.findByIdAndUpdate(routs[1], {posts})
+                                    .exec()
+                                    .then(
+                                        user => {
+                                            res.writeHead(200, {'Content-Type': 'application/json'});
+                                            res.end( JSON.stringify({
+                                                result_code: 0, message: 'Post success added',
+                                                post}) );
+                                        },
+                                    );
+                            }
+                        }).catch(err => {
+                            res.end( JSON.stringify({result_code: 1, message: err.message}) );
+                        });
+                });
+            });
+    }catch(e){
+        console.log(e.message);
+    };
+};
+
+
 
 
 
