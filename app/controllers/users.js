@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const authMiddleware = require('../middleware/auth.js');
 const formidable = require('formidable');
+const {base_address} = require('../../config/app');
 
 // *** not requiring authorization ***
 const getFew = (req, res) => {
@@ -321,7 +322,7 @@ const getPosts = (req, res) => {
 
             let data = {
                 result_code: 0, 
-                posts: posts.length && posts || ['nihuya'],
+                posts: posts.length && posts || [],
             };
 
             res.writeHead(200, {'Content-Type': 'application/json'});
@@ -336,55 +337,6 @@ const getPosts = (req, res) => {
         })
 
 };
-
-/*let createPost = (req, res) => {
-
-    let routs = url.parse(req.url, true).pathname.split('/')
-        .filter(rout => rout !== '' );
-    let data = [];
-    req.on('data', chunk => {
-        data.push(chunk);
-    });
-    req.on('end', () => {
-
-        User.findById(routs[1])
-            .exec()
-            .then(user => {
-                if(user === null){
-                    res.end( JSON.stringify({result_code: 1, message: 'this user was not found'}) );
-
-                    return;
-                }else{
-                    console.log(data);
-                    let post = {
-                        date: +new Date(), 
-                        text: data.post.text,
-                        picture: data.post.picture,
-                        likes: [],
-                        id: Math.floor( (Math.random() + Math.random()) * 1000000), 
-                        comments: [],
-                    };
-                    let posts = user.posts;
-                    posts.push(post);
-
-                    User.findByIdAndUpdate(routs[1], {posts})
-                        .exec()
-                        .then(
-                            user => {
-                                res.writeHead(200, {'Content-Type': 'application/json'});
-                                res.end( JSON.stringify({
-                                    result_code: 0, message: 'Post success added',
-                                post}) );
-                            },
-                        );
-                }
-            }).catch(err => {
-                res.end( JSON.stringify({result_code: 1, message: err.message}) );
-            });
-
-    });
-};
-*/
 
 let createPost = (req, res) => {
 
@@ -411,19 +363,20 @@ let createPost = (req, res) => {
 
                                 return;
                             }else{
+                                let post_id = Math.floor( (Math.random() + Math.random()) * 1000000);
+
                                 let post = {
                                     date: +new Date(), 
                                     text: fields.text,
-                                    picture: name,
+                                    picture: `${base_address}profile/${routs[1]}/post/${post_id}/picture/${name}`,
                                     likes: [],
-                                    id: Math.floor( (Math.random() + Math.random()) * 1000000), 
+                                    id: post_id, 
                                     comments: [],
                                 };
                                 let posts = user.posts;
                                 posts.push(post);
 
                                 User.findByIdAndUpdate(routs[1], {posts})
-                                    .exec()
                                     .then(
                                         user => {
                                             res.writeHead(200, {'Content-Type': 'application/json'});
@@ -443,6 +396,55 @@ let createPost = (req, res) => {
     };
 };
 
+const getPostPicture = (req, res) => {
+
+    let routs = url.parse(req.url, true).pathname.split('/');
+    let path = __dirname + '/../../images/posts/' + routs.slice(-1);
+    fs.readFile(path, (err, data) => {
+        if (err) throw err;
+        res.end(data);
+    }); 
+};
+
+const likedPost = (req, res) => {
+    let routs = url.parse(req.url, true).pathname.split('/').filter(rout => rout !== '');
+    User.findById(routs[1])
+        .exec()
+        .then(user => {
+
+            if(user === null){
+                res.end( JSON.stringify({result_code: 1, message: 'this user was not found'}) );
+            }else{
+
+                let posts = user.posts.map(post => {
+                    if(+post.id != +routs[3]){
+                        return post;
+                    }else{
+                        if(post.likes.includes(req.headers.id)){
+                            post.likes = post.likes.filter(id => id != req.headers.id);
+                        }else{
+                            post.likes.push(req.headers.id);
+                        };
+                        console.log(post.id);
+                        return post;
+                    }
+                });
+
+                User.findByIdAndUpdate(routs[1], {posts})
+                    .exec()
+                    .then(old_user_data => {
+                        let post = user.posts.find(post => post.id === +routs[3]);
+                        res.end(JSON.stringify({
+                            result_code: 0, message: 'successfully',
+                            post,
+                        }) )
+                    });
+            };
+
+
+        });
+};
+
 
 
 
@@ -457,4 +459,6 @@ module.exports = {
     unfollow: authMiddleware(unfollow),
     getPosts,
     createPost: authMiddleware(createPost),
+    likedPost: authMiddleware(likedPost),
+    getPostPicture,
 };
