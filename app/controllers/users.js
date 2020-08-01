@@ -214,19 +214,29 @@ const follow = (req, res) => {
         User.findById(routs[1])
         .exec()
         .then( user => {
-            return Promise.resolve(user.subscribers); 
+            return Promise.resolve(user); 
         }),
 
         User.findById(req.headers.id)
         .exec()
-        .then( user => Promise.resolve(user.subscribed_to) ), 
+        .then( user => Promise.resolve(user) ), 
     ])
         .then(data => {
-            if( !data[0].includes(req.headers.id) ){
-                data[0].push(req.headers.id);
-                let subscribers = [...data[0]];
-                data[1].push(routs[1]);
-                let subscribed_to = [...data[1]];
+            let user_1 = data[0];
+            let user_2 = data[1];
+
+            if( !user_1.subscribers.includes(user_2.id) ){
+                let subscribers = [...user_1.subscribers];
+                subscribers.push({
+                    id: user_2.id,
+                    name: user_2.name,
+                });
+
+                let subscribed_to = [...user_2.subscribed_to];
+                subscribed_to.push({
+                    id: user_1.id,
+                    name: user_1.name,
+                });
 
                 Promise.all([
                     User.findByIdAndUpdate(routs[1], {subscribers})
@@ -260,19 +270,23 @@ const unfollow = (req, res) => {
         User.findById(routs[1])
         .exec()
         .then( user => {
-            return Promise.resolve(user.subscribers); 
+            return Promise.resolve(user); 
         }),
 
         User.findById(req.headers.id)
         .exec()
-        .then( user => Promise.resolve(user.subscribed_to) ), 
+        .then( user => Promise.resolve(user) ), 
     ])
         .then(data => {
-            if( data[0].includes(req.headers.id) ){
-                let subscribers = data[0]
-                    .filter(id => id === req.headers.id ? false: true);
-                let subscribed_to = data[1]
-                    .filter(id => id === routs[1] ? false: true);
+            console.log(data[0]);
+            if( data[0].subscribers.includes(req.headers.id) ){
+                let subscribers = data[0].subscribers
+                    .filter(user => {
+                        console.log(user);
+                        return user.id == req.headers.id ? false: true
+                    });
+                let subscribed_to = data[1].subscribed_to
+                    .filter(user => user.id == routs[1] ? false: true);
 
                 Promise.all([
                     User.findByIdAndUpdate(routs[1], {subscribers})
