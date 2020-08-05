@@ -454,8 +454,18 @@ const deletePost = (req, res) => {
         .then(user => {
             if(user) {
                 let posts = user.posts.filter(post => {
+
+                    let file_name = post.picture.split('/').splice(-1)[0];
+                console.log(file_name);
+                    let path = __dirname + '/../../images/posts/' + file_name;
+
+                fs.unlink(path, err => {
+                    err && console.log('Deleted error: ' + err.message);
+                });
+
                     return post.id != routs[3];
                 });
+
 
                 User.findByIdAndUpdate(req.headers.id, {posts})
                     .exec()
