@@ -32,6 +32,8 @@ const signIn = (req, res) => {
                             name: user.name,
                             photo: user.photos.small,
                             token: token,
+                            subscribers: user.subscribers,
+                            subscribed_to: user.subscribed_to,
                         },
                         message: 'successfully',
                         result_code: 0,

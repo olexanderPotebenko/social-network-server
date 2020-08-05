@@ -7,7 +7,7 @@ const formidable = require('formidable');
 const {base_address} = require('../../config/app');
 
 // *** not requiring authorization ***
-const getFew = (req, res) => {
+const getUsers = (req, res) => {
 
     let params = url.parse(req.url, true).query;
     //User.remove({}, ()=>{});
@@ -17,7 +17,7 @@ const getFew = (req, res) => {
             let start = Math.floor( (params.page - 1) * (params.count));
             let end = start + +params.count;
             if(start > users.length || Object.keys(params).length < 2)
-                users_parts = users.slice(-5);
+                users_parts = users;
             else if(end >= users.length){
                 users_parts = users.slice(start, users.length);
             }else
@@ -119,21 +119,10 @@ const update = (req, res) => {
     });
 };
 
-const remove = (req, res) => {
-    let params = url.parse(req.url, true).query;
-    User.deleteOne({id: params.id})
-        .exec()
-        .then(() => {
-            res.end(JSON.stringify({success: true}));
-        }).catch(err => {
-            res.writeHead(500, {'Content-Type': 'text/plain'});
-            res.end(JSON.stringify(err));
-        });
-};
 
 //get users data
 
-const getFewAuthorized = (req, res) => {
+const getUsersAuthorized = (req, res) => {
 
     let params = url.parse(req.url, true).query;
     //User.remove({}, ()=>{});
@@ -225,7 +214,7 @@ const follow = (req, res) => {
             let user_1 = data[0];
             let user_2 = data[1];
 
-            if( !user_1.subscribers.includes(user_2.id) ){
+            if( !user_1.subscribers.map(user => user.id).includes(user_2.id) ){
                 let subscribers = [...user_1.subscribers];
                 subscribers.push({
                     id: user_2.id,
@@ -247,6 +236,7 @@ const follow = (req, res) => {
                     .exec()
                     .then( user => Promise.resolve() ),
                 ]).then( resolve => {
+                    console.log(`User ${user_2.id} successfully subscribed on user ${user_1.id}`);
                     res.writeHead(200, {'Content-Type': 'application/json'});
                     res.end( JSON.stringify({result_code: 0, 
                         message: `user Vasya has successfully subscribed to user petya`}) );
@@ -279,7 +269,7 @@ const unfollow = (req, res) => {
     ])
         .then(data => {
             console.log(data[0]);
-            if( data[0].subscribers.includes(req.headers.id) ){
+            if( data[0].subscribers.map(user => user.id).includes(req.headers.id) ){
                 let subscribers = data[0].subscribers
                     .filter(user => {
                         console.log(user);
@@ -454,25 +444,45 @@ const likedPost = (req, res) => {
                         }) )
                     });
             };
-
-
         });
 };
 
+const deletePost = (req, res) => {
+    let routs = url.parse(req.url, true).pathname.split('/').filter(rout => rout !== '');
+    User.findById(req.headers.id)
+        .exec()
+        .then(user => {
+            if(user) {
+                let posts = user.posts.filter(post => {
+                    return post.id != routs[3];
+                });
 
+                User.findByIdAndUpdate(req.headers.id, {posts})
+                    .exec()
+                    .then(user => {
+
+                        let message = `post id=${routs[3]} successfully deleted`;
+                        console.log(message);
+                        res.end();
+                    });
+            }else{
+                res.writeHead(500);
+            }
+        });
+};
 
 
 
 module.exports = {
     create,
     getOne: authMiddleware(getOneAuthorized, getOne),
-    getFew: authMiddleware(getFewAuthorized, getFew),
+    getUsers: authMiddleware(getUsersAuthorized, getUsers),
     update,
-    remove,
     follow: authMiddleware(follow),
     unfollow: authMiddleware(unfollow),
     getPosts,
     createPost: authMiddleware(createPost),
     likedPost: authMiddleware(likedPost),
+    deletePost: authMiddleware(deletePost),
     getPostPicture,
 };
