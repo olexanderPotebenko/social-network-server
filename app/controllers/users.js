@@ -337,6 +337,7 @@ const getPosts = (req, res) => {
             };
         })
         .catch( err => {
+            if(err) throw (err);
             res.end( JSON.stringify({result_code: 1, message: err.message}) );
         })
 
@@ -351,6 +352,7 @@ let createPost = (req, res) => {
 
             let oldpath = files.image['path'];
             let name = `${Math.floor(Math.random() * 100000)}.` + files.image['name'].split('.')[1];
+            console.log('name png files created' + name);
             let newpath = __dirname + '/../../images/posts/' + name;
 
             fs.rename(oldpath, newpath, function (err) {
@@ -403,9 +405,10 @@ let createPost = (req, res) => {
 const getPostPicture = (req, res) => {
 
     let routs = url.parse(req.url, true).pathname.split('/');
+    console.log(routs);
     let path = __dirname + '/../../images/posts/' + routs.slice(-1);
     fs.readFile(path, (err, data) => {
-        if (err) throw err;
+        //if (err) throw err;
         res.end(data);
     }); 
 };
@@ -448,24 +451,27 @@ const likedPost = (req, res) => {
 };
 
 const deletePost = (req, res) => {
+    console.log('Deleted post');
     let routs = url.parse(req.url, true).pathname.split('/').filter(rout => rout !== '');
     User.findById(req.headers.id)
         .exec()
         .then(user => {
             if(user) {
                 let posts = user.posts.filter(post => {
+                    if(post.id != routs[3]){
+                        return true;
+                    }else{
+                        let file_name = post.picture.split('/').splice(-1)[0];
+                        console.log('deleted file: ' + file_name);
+                        let path = __dirname + '/../../images/posts/' + file_name;
 
-                    let file_name = post.picture.split('/').splice(-1)[0];
-                console.log(file_name);
-                    let path = __dirname + '/../../images/posts/' + file_name;
-
-                fs.unlink(path, err => {
-                    err && console.log('Deleted error: ' + err.message);
+                        fs.unlink(path, err => {
+                            err && console.log('Deleted error: ' + err.message);
+                        });
+                        return false;
+                    }
                 });
-
-                    return post.id != routs[3];
-                });
-
+                console.log('Post count: ' + posts.length);
 
                 User.findByIdAndUpdate(req.headers.id, {posts})
                     .exec()
