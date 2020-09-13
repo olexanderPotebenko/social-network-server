@@ -3,11 +3,6 @@ const mongoose = require('mongoose');
 const UserSchema = new mongoose.Schema({
     name: String,
     date: Number,
-    birthday: Number,
-    country: String,
-    city: String,
-    status: String,
-    phone: String,
     email: String,
     password: String,
     photos: {
@@ -18,6 +13,7 @@ const UserSchema = new mongoose.Schema({
     subscribers: Array, 
     posts: Array,
     dialogs: Array,
+    info: Array,
 });
 mongoose.model('User', UserSchema);
 

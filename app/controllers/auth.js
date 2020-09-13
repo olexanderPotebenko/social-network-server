@@ -34,6 +34,7 @@ const signIn = (req, res) => {
                             token: token,
                             subscribers: user.subscribers,
                             subscribed_to: user.subscribed_to,
+                            info: user.info,
                         },
                         message: 'successfully',
                         result_code: 0,
@@ -81,16 +82,12 @@ const signUp = (req, res) => {
                                 small: '',
                                 large: '', 
                             },
-                            phone: '',
-                            country: '',
-                            city: '',
-                            status: '',
-                            subscribed_to: [],
+                           subscribed_to: [],
                             subscribrs: [], 
                             dialogs: [],
                             posts: [],
                             date: +new Date(),
-                            birthday: '',
+                            info: [],
 
                         }).then(user => {
                             console.log(`user ${user.name} has been successfully registered`);

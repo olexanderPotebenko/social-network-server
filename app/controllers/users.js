@@ -31,6 +31,7 @@ const getUsers = (req, res) => {
                     status: user.status,
                     subscribed_to: user.subscribed_to,
                     subscribers: user.subscribers,
+                    info: user.info,
                 };
             });
             let data = {
@@ -61,7 +62,7 @@ const getOne = (req, res) => {
                     subscribed_to: user.subscribed_to,
                     email: user.email,
                     subscribers: user.subscribers,
-                    status: user.status,
+                    info: user.info,
                     result_code: 0,
                 };
                 res.end(JSON.stringify({data: data}));
@@ -78,46 +79,6 @@ const getOne = (req, res) => {
 };
 
 // *** requiring authorization ***
-
-const create = (req, res) => {
-    let data = [];
-    req.on('data', chunk => {
-        data.push(chunk);
-    });
-    req.on('end', () => {
-        data = JSON.parse(data);
-        User.create(data)
-            .then(createdUser => {
-                res.writeHead(200, {'Content-Type': 'application/json'});
-                res.end(JSON.stringify(createdUser));
-            }).catch(err => {
-                console.log(err);
-                res.writeHead(500, {'Content-Type': 'text/plain'});
-                res.end(JSON.stringify(err));
-            });
-    });
-
-};
-
-const update = (req, res) => {
-    let data = [];
-    req.on('data', chunk => {
-        data.push(chunk);
-    });
-    req.on('end', () => {
-
-        let params = url.parse(req.url, true).query;
-        User.findOneAndUpdate({id: params.id}, data)
-            .exec()
-            .then(user => {
-                res.writeHead(200, {'Content-Type': 'application/json'});
-                res.end(JSON.stringify(user));
-            }).catch(err => {
-                res.writeHead(500, {'Content-Type': 'text/plain'});
-                res.end(JSON.stringify(err));
-            });
-    });
-};
 
 
 //get users data
@@ -148,6 +109,7 @@ const getUsersAuthorized = (req, res) => {
                     followed: user.subscribers.includes(req.headers.id),
                     subscribed_to: user.subscribed_to,
                     subscribers: user.subscribers,
+                    info: user.info,
                 };
             });
             let data = {
@@ -178,6 +140,7 @@ const getOneAuthorized = (req, res) => {
                     email: user.email,
                     subscribers: user.subscribers,
                     status: user.status,
+                    info: user.info,
                     result_code: 0,
                 };
                 res.end(JSON.stringify({data}));
@@ -404,6 +367,7 @@ let createPost = (req, res) => {
 
 const getPostPicture = (req, res) => {
 
+    console.log('aaaaaa!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     let routs = url.parse(req.url, true).pathname.split('/');
     console.log(routs);
     let path = __dirname + '/../../images/posts/' + routs.slice(-1);
@@ -412,6 +376,19 @@ const getPostPicture = (req, res) => {
         res.end(data);
     }); 
 };
+
+const getAvatarPicture = (req, res) => {
+
+    console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+    let routs = url.parse(req.url, true).pathname.split('/');
+    console.log(routs);
+    let path = __dirname + '/../../images/avatars/' + routs.slice(-1);
+    fs.readFile(path, (err, data) => {
+        //if (err) throw err;
+        res.end(data);
+    }); 
+};
+
 
 const likedPost = (req, res) => {
     let routs = url.parse(req.url, true).pathname.split('/').filter(rout => rout !== '');
@@ -432,6 +409,7 @@ const likedPost = (req, res) => {
                         }else{
                             post.likes.push(req.headers.id);
                         };
+                        console.log(post.id + ' liked by ' + user.id);
                         console.log(post.id);
                         return post;
                     }
@@ -487,13 +465,70 @@ const deletePost = (req, res) => {
         });
 };
 
+const profileUpdate = (req, res) => {
+    console.log('profile update !!!');
+    let routs = url.parse(req.url, true).pathname.split('/').filter(rout => rout !== '');
+    let form = new formidable.IncomingForm();
+
+    form.parse(req, function (err, fields, files) {
+
+        let oldpath = '', newpath = '', name = '';
+        if( Object.keys(files).length ){
+            oldpath = files.image['path'];
+            name = `${Math.floor(Math.random() * 1000000000000000)}.` + files.image['name'].split('.')[1];
+            newpath = __dirname + '/../../images/avatars/' + name;
+        };
+
+        fs.rename(oldpath, newpath, function (err) {
+
+            User.findById(req.headers.id)
+                .exec()
+                .then(user => {
+
+                    //delete old avatar
+                    let file_name = user.photos.small.split('/').splice(-1)[0];
+                    console.log('deleted file: ' + file_name);
+                    let path = __dirname + '/../../images/avatars/' + file_name;
+
+                    fs.unlink(path, err => {
+                        err && console.log('Deleted error: ' + err.message);
+                    });
+
+                    let photos = user.photos;
+                    if( Object.keys(files).length ) {
+                        photos.small = `${base_address}profile/${routs[1]}/photos/small/${name}`;
+                    }
+
+                    let info = {};
+                    Object.assign(info, fields);
+                    info = [info];
+
+                    let options = {
+                        photos,
+                        info,
+                    }
+                    User.findByIdAndUpdate(req.headers.id, options)
+                        .exec()
+                        .then(user => {
+                            if(user){
+                                res.end(JSON.stringify({result_code: 0, message: 'User data was been successfully updated'}) );
+                            }else{
+                                res.end(JSON.stringify({result_code: 1, message: 'this user does not exist'}) );
+                            };
+                        }).catch(err => {
+                            console.log(err);
+                            res.writeHead(500, {'Content-Type': 'text/plain'});
+                            res.end(JSON.stringify(err));
+                        });
+                });
+        });
+    });
+}
 
 
 module.exports = {
-    create,
     getOne: authMiddleware(getOneAuthorized, getOne),
     getUsers: authMiddleware(getUsersAuthorized, getUsers),
-    update,
     follow: authMiddleware(follow),
     unfollow: authMiddleware(unfollow),
     getPosts,
@@ -501,4 +536,6 @@ module.exports = {
     likedPost: authMiddleware(likedPost),
     deletePost: authMiddleware(deletePost),
     getPostPicture,
+    getAvatarPicture,
+    profileUpdate: authMiddleware(profileUpdate),
 };
