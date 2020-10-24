@@ -22,8 +22,8 @@ module.exports = (authorizedFunc, unAuthorizedFunc) => {
                 authorizedFunc(req, res);
             }catch(e) {
                 console.log(e.message);
-        console.log('!!!' + req.headers);
-        console.log('!!!' + token);
+                console.log('!!!' + req.headers);
+                console.log('!!!' + token);
                 if(e.name === 'JsonWebTokenError'){
                     res.writeHead(501, {'Content-Type': 'application/json'});
                     res.end(JSON.stringify({message: e.message, result_code: 1}));

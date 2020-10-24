@@ -7,6 +7,7 @@ const formidable = require('formidable');
 const {base_address} = require('../../config/app');
 
 // *** not requiring authorization ***
+
 const getUsers = (req, res) => {
 
     let params = url.parse(req.url, true).query;
@@ -274,7 +275,7 @@ const getPosts = (req, res) => {
         .exec()
         .then( user => {
 
-            if(user != null) {
+            if(user) {
 
             let posts = user.posts;
             let posts_parts = [];
@@ -306,6 +307,63 @@ const getPosts = (req, res) => {
 
 };
 
+const getLikersPost = (req, res) => {
+
+    let {user_id, post_id} = url.parse(req.url, true).query;
+
+    try {
+    User.findById(user_id).exec()
+        .then(user => {
+            if(user) {
+                let likers = user.posts.find(post => post.id == post_id).likes;
+                if(Array.isArray(likers)) {
+                    users = likers.map(id => {
+                        return User.findById(id).exec()
+                            .then(user => {
+                                if(!user) user = {};
+                                return {
+                                    name: user.name,
+                                    id: user._id,
+                                    photos: user.photos,
+                                    subscribed_to: user.subscribed_to,
+                                    email: user.email,
+                                    subscribers: user.subscribers,
+                                    info: user.info,
+                                    result_code: 0,
+                                };
+
+                            });
+                    });
+                    Promise.all(users)
+                        .then(users => {
+                            let data = {
+                                users,
+                                status_code: 0,
+                            };
+                            res.end(JSON.stringify(data));
+                        });
+                }else{
+                    res.writeHead(401, {'Content-Type': 'application/json'});
+                    res.end(JSON.stringify({message: 'this post was not found', status_code: 1}));
+                }
+
+            }else{
+                res.writeHead(401, {'Content-Type': 'application/json'});
+                res.end(JSON.stringify({message: 'this user was not found', status_code: 1}));
+            }
+        })
+        .catch(err => {
+            console.log(err.message);
+            res.writeHead(500, {'Content-Type': 'text/plain'});
+            res.end(JSON.stringify({message: err.message, status_code: 1}));
+        });
+    }catch(err) {
+        console.log(err.message);
+        res.writeHead(500, {'Content-Type': 'text/plain'});
+        res.end(JSON.stringify({message: err.message, status_code: 1}));
+    }
+}
+
 let createPost = (req, res) => {
 
 
@@ -313,16 +371,17 @@ let createPost = (req, res) => {
         let form = new formidable.IncomingForm();
         form.parse(req, function (err, fields, files) {
 
-            let oldpath = files.image['path'];
-            let name = `${Math.floor(Math.random() * 100000)}.` + files.image['name'].split('.')[1];
-            console.log('name png files created' + name);
-            let newpath = __dirname + '/../../images/posts/' + name;
+            if(files.image) {
+                let oldpath = files.image['path'];
+                let name = `${Math.floor(Math.random() * 100000)}.` + files.image['name'].split('.')[1];
+                console.log('name png files created' + name);
+                let newpath = __dirname + '/../../images/posts/' + name;
 
-            fs.rename(oldpath, newpath, function (err) {
-                if (err) throw err;
+                fs.rename(oldpath, newpath, function (err) {
+                    if (err) throw err;
 
-                let routs = url.parse(req.url, true).pathname.split('/')
-                    .filter(rout => rout !== '' );
+                    let routs = url.parse(req.url, true).pathname.split('/')
+                        .filter(rout => rout !== '' );
 
                     User.findById(routs[1])
                         .exec()
@@ -336,7 +395,7 @@ let createPost = (req, res) => {
 
                                 let post = {
                                     date: +new Date(), 
-                                    text: fields.text,
+                                    text: fields.text == 'undefined'? '': fields.text,
                                     picture: `${base_address}profile/${routs[1]}/post/${post_id}/picture/${name}`,
                                     likes: [],
                                     id: post_id, 
@@ -359,7 +418,13 @@ let createPost = (req, res) => {
                             res.end( JSON.stringify({result_code: 1, message: err.message}) );
                         });
                 });
-            });
+            }else{
+                res.end( JSON.stringify({
+                    result_code: 1,
+                    message: 'sends posts dos`nt photo exists'
+                }) );
+            }
+        });
     }catch(e){
         console.log(e.message);
     };
@@ -532,6 +597,7 @@ module.exports = {
     follow: authMiddleware(follow),
     unfollow: authMiddleware(unfollow),
     getPosts,
+    getLikersPost,
     createPost: authMiddleware(createPost),
     likedPost: authMiddleware(likedPost),
     deletePost: authMiddleware(deletePost),
