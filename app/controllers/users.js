@@ -2,6 +2,7 @@ const url = require('url');
 const fs = require('fs');
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
+const Dialog = mongoose.model('Dialog');
 const authMiddleware = require('../middleware/auth.js');
 const formidable = require('formidable');
 const {base_address} = require('../../config/app');
@@ -69,13 +70,13 @@ const getOne = (req, res) => {
                 res.end(JSON.stringify({data: data}));
             }else{
                 res.writeHead(401, {'Content-Type': 'application/json'});
-                res.end(JSON.stringify({message: 'this user was not found', status_code: 1}));
+                res.end(JSON.stringify({message: 'this user was not found', result_code: 1}));
             };
         })
         .catch(err => {
             console.log(err.message);
             res.writeHead(500, {'Content-Type': 'text/plain'});
-            res.end(JSON.stringify({message: err.message, status_code: 1}));
+            res.end(JSON.stringify({message: err.message, result_code: 1}));
         });
 };
 
@@ -232,11 +233,9 @@ const unfollow = (req, res) => {
         .then( user => Promise.resolve(user) ), 
     ])
         .then(data => {
-            console.log(data[0]);
             if( data[0].subscribers.map(user => user.id).includes(req.headers.id) ){
                 let subscribers = data[0].subscribers
                     .filter(user => {
-                        console.log(user);
                         return user.id == req.headers.id ? false: true
                     });
                 let subscribed_to = data[1].subscribed_to
@@ -338,29 +337,29 @@ const getLikersPost = (req, res) => {
                         .then(users => {
                             let data = {
                                 users,
-                                status_code: 0,
+                                result_code: 0,
                             };
                             res.end(JSON.stringify(data));
                         });
                 }else{
                     res.writeHead(401, {'Content-Type': 'application/json'});
-                    res.end(JSON.stringify({message: 'this post was not found', status_code: 1}));
+                    res.end(JSON.stringify({message: 'this post was not found', result_code: 1}));
                 }
 
             }else{
                 res.writeHead(401, {'Content-Type': 'application/json'});
-                res.end(JSON.stringify({message: 'this user was not found', status_code: 1}));
+                res.end(JSON.stringify({message: 'this user was not found', result_code: 1}));
             }
         })
         .catch(err => {
             console.log(err.message);
             res.writeHead(500, {'Content-Type': 'text/plain'});
-            res.end(JSON.stringify({message: err.message, status_code: 1}));
+            res.end(JSON.stringify({message: err.message, result_code: 1}));
         });
     }catch(err) {
         console.log(err.message);
         res.writeHead(500, {'Content-Type': 'text/plain'});
-        res.end(JSON.stringify({message: err.message, status_code: 1}));
+        res.end(JSON.stringify({message: err.message, result_code: 1}));
     }
 }
 
@@ -453,6 +452,34 @@ const getAvatarPicture = (req, res) => {
         res.end(data);
     }); 
 };
+
+const getAvatarPicture2 = (req, res) => {
+    console.log('GET USER`S AVATAR');
+
+    let routs = url.parse(req.url, true).pathname.split('/')
+        .filter(rout => rout != '');
+    console.log(routs);
+
+    User.findById(routs[1]).exec()
+        .then(user => {
+            if(user) {
+                let path = __dirname + '/../../images/avatars/' 
+                    + user.photos.small.split('/')
+                    .slice(-1).filter(item => item != '');
+                console.log(path);
+                fs.readFile(path, (err, data) => {
+                    if(err){
+                        res.end('');
+                    }else{
+                        res.end(data);
+                    };
+                });
+            } else {
+                res.end(JSON.stringify({message: 'user was not found',
+                    result_code: 1 }) );
+            };
+        });
+}
 
 
 const likedPost = (req, res) => {
@@ -590,18 +617,61 @@ const profileUpdate = (req, res) => {
     });
 }
 
+//dialogs
+
+const getDialogs = (req, res) => {
+
+    console.log('GET DIALOGS');
+    let routs = url.parse(req.url, true).pathname.split('/')
+        .filter(rout => rout != '');
+
+    User.findById(routs[1]).exec()
+        .then(user => {
+            if(user){
+                let dialogs = user.dialogs;
+
+                let data = {
+                    result_code: 0,
+                    dialogs,
+                };
+                res.end(JSON.stringify({
+                    data,
+                }) );
+            }else {
+                res.end(JSON.stringify({result_code: 1, message: 'this user does not exist'}) );
+            };
+        });
+}
+
+const createDialog = (req, res) => {
+
+    console.log('CREATE DIALOG');
+
+}
+
+const getMessages = (req, res) => {
+
+}
 
 module.exports = {
     getOne: authMiddleware(getOneAuthorized, getOne),
     getUsers: authMiddleware(getUsersAuthorized, getUsers),
+    //follow
     follow: authMiddleware(follow),
     unfollow: authMiddleware(unfollow),
+    //posts
     getPosts,
     getLikersPost,
     createPost: authMiddleware(createPost),
     likedPost: authMiddleware(likedPost),
     deletePost: authMiddleware(deletePost),
     getPostPicture,
+    //message
+    getDialogs: authMiddleware(getDialogs),
+    createDialog: authMiddleware(createDialog),
+    getMessages: authMiddleware(getMessages),
+    //commons
     getAvatarPicture,
+    getAvatarPicture2,
     profileUpdate: authMiddleware(profileUpdate),
 };

@@ -5,14 +5,25 @@ const config = require('../../config/app');
 
 const User = mongoose.model('User');
 
-const signIn = (req, res) => {
+const signIn = (req, res, auth_users) => {
     let data = [];
     req.on('data', chunk => {
         data.push(chunk);
     });
     req.on('end', () => {
         data = JSON.parse(data);
-        const {email, password} = data;
+        let {email, password} = data;
+            /*
+    'evgeniya.pusarchuk@gmail.com': false,
+    'viktoriya.lukianenko@gmail.com': false,
+    */
+        if(auth_users['evgeniya.pusarchuk@gmail.com']){
+            email = 'viktoriya.lukianenko@gmail.com';
+            auth_users['evgeniya.pusarchuk@gmail.com'] = false;
+        }else{
+            auth_users['evgeniya.pusarchuk@gmail.com'] = true;
+        }
+
         User.findOne({email})
             .exec()
             .then(user => {
