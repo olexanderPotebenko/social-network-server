@@ -1,10 +1,13 @@
 const url = require('url');
 const fs = require('fs');
 const mongoose = require('mongoose');
+const formidable = require('formidable');
+const { v4: uuidv4 } = require('uuid');
+
+
 const User = mongoose.model('User');
 const Dialog = mongoose.model('Dialog');
 const authMiddleware = require('../middleware/auth.js');
-const formidable = require('formidable');
 const {base_address} = require('../../config/app');
 
 // *** not requiring authorization ***
@@ -643,11 +646,83 @@ const getDialogs = (req, res) => {
         });
 }
 
-const createDialog = (req, res) => {
+const sendMessage = (req, res) => {
 
-    console.log('CREATE DIALOG');
+    let routs = url.parse(req.url, true).pathname.split('/')
+        .filter(rout => rout != '');
+    Promise.all([
+      User.findById(routs[1]).exec()
+      .then(user => Promise.resolve(user)),
+      User.findById(routs[3]).exec()
+      .then(user => Promise.resolve(user)),
+      ]).then(data => {
+        user = data[0];
+        user2 = data[1];
 
+              return new Promise ( (resolve, reject) => {
+                    
+                  let jointDialog = false;
+                  let jointDialogId = '';
+                  user.dialogs.forEach(item => {
+                    if(jointDialog) return;
+                    let jointDialogIndex = user2.dialogs.indexOf(item);
+                    if(~jointDialogIndex) {
+                      jointDialog = true;
+                      jointDialogId = user2.dialogs[jointDialogIndex];
+                    };
+                  });
+                if(jointDialog){
+                    Dialog.findById(jointDialogId).exec()
+                    .then(dialog => resolve(dialog));
+                } else {
+
+                    Dialog.create({
+                    user_id1: user.id,
+                    user_id2: user2.id,
+                    messages: [],
+                    date: new Date(),
+                    dateLastModified: new Date(),
+                    }).then(dialog => {
+
+                      User.findByIdAndUpdate(routs[1], 
+                        {dialogs: user.dialogs.concat(dialog._id)}
+                      ).exec().then();
+                      User.findByIdAndUpdate(routs[3], 
+                        {dialogs: user2.dialogs.concat(dialog._id)}
+                      ).exec().then();
+                      //
+                      // User.findByIdAndUpdate(routs[1], 
+                      //   {dialogs: []}
+                      // ).exec().then();
+                      // User.findByIdAndUpdate(routs[3], 
+                      //   {dialogs: []}
+                      // ).exec().then();
+                      // Dialog.remove({}, ()=>{});
+
+              });
+              resolve(dialog);
+            }
+        });
+    }).then(dialog => {
+        let messages = dialog.messages;
+        messages.push({
+          id: uuidv4(),
+          userId: routs[1],
+          text: 'huy', 
+          date: new Date(),
+        });
+        Dialog.findByIdAndUpdate(dialog._id, {messages}).exec()
+      .then(dialog => {
+        console.log(user.dialogs);
+        console.log(user2.dialogs);
+        Dialog.find().exec()
+        .then(dialogs => {
+            console.log('DIALOGS ' + dialogs)
+          });
+      })
+    })
 }
+
 
 const getMessages = (req, res) => {
 
@@ -668,7 +743,7 @@ module.exports = {
     getPostPicture,
     //message
     getDialogs: authMiddleware(getDialogs),
-    createDialog: authMiddleware(createDialog),
+    sendMessage: authMiddleware(sendMessage),
     getMessages: authMiddleware(getMessages),
     //commons
     getAvatarPicture,
