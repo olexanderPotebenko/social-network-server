@@ -68,7 +68,6 @@ const getOne = (req, res) => {
           email: user.email,
           subscribers: user.subscribers,
           info: user.info,
-          dialogs: user.dialogs,
           result_code: 0,
         };
         res.end(JSON.stringify({data: data}));
@@ -435,8 +434,9 @@ let createPost = (req, res) => {
 
 const getPostPicture = (req, res) => {
 
-  console.log('getPostPicture');
+  console.log('aaaaaa!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
   let routs = url.parse(req.url, true).pathname.split('/');
+  console.log(routs);
   let path = __dirname + '/../../images/posts/' + routs.slice(-1);
   fs.readFile(path, (err, data) => {
     //if (err) throw err;
@@ -446,8 +446,9 @@ const getPostPicture = (req, res) => {
 
 const getAvatarPicture = (req, res) => {
 
-  console.log('getAvatarPicture');
+  console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
   let routs = url.parse(req.url, true).pathname.split('/');
+  console.log(routs);
   let path = __dirname + '/../../images/avatars/' + routs.slice(-1);
   fs.readFile(path, (err, data) => {
     //if (err) throw err;
@@ -460,6 +461,7 @@ const getAvatarPicture2 = (req, res) => {
 
   let routs = url.parse(req.url, true).pathname.split('/')
     .filter(rout => rout != '');
+  console.log(routs);
 
   User.findById(routs[1]).exec()
     .then(user => {
@@ -467,6 +469,7 @@ const getAvatarPicture2 = (req, res) => {
         let path = __dirname + '/../../images/avatars/' 
           + user.photos.small.split('/')
           .slice(-1).filter(item => item != '');
+        console.log(path);
         fs.readFile(path, (err, data) => {
           if(err){
             res.end('');
@@ -629,51 +632,14 @@ const getDialogs = (req, res) => {
     .then(user => {
       if(user){
         let dialogs = user.dialogs;
-        dialogs = dialogs.map(dialog_id => {
-          return Dialog.findById(dialog_id).exec()
-            .then(dialog => {
-              let user_id;
-              if(dialog.user_id1 === routs[1])
-                user_id = dialog.user_id2;
-              else
-                user_id = dialog.user_id1;
-              console.log(dialog);
-              return User.findById(user_id).exec()
-              .then(user => {
-                console.log('/////////////');
-                console.log(user);
-                console.log(dialog);
-                console.log('/////////////');
-                return {
-                  dialog_id: dialog._id,
-                  lastMessage: dialog.messages[dialog.messages.length -1],
-                  user_id,
-                  user_avatar: user.photos.small,
-                  user_name: user.name,
-                  dateLastModified: dialog.dateLastModified,
-                };
-              });
-            })
-        });
-        //dialog = {
-        //dialog_id,
-        //lastMessage,
-        //user_id,
-        //user_avatar,
-        //}
-        Promise.all([...dialogs])
-          .then(dialogs => {
 
-            console.log(dialogs);
-            let data = {
-              result_code: 0,
-              dialogs,
-            };
-            console.log('DIALOGS :' + dialogs);
-            res.end(JSON.stringify({
-              data,
-            }) );
-          });
+        let data = {
+          result_code: 0,
+          dialogs,
+        };
+        res.end(JSON.stringify({
+          data,
+        }) );
       }else {
         res.end(JSON.stringify({result_code: 1, message: 'this user does not exist'}) );
       };
@@ -685,25 +651,24 @@ const sendMessage = (req, res) => {
   let routs = url.parse(req.url, true).pathname.split('/')
     .filter(rout => rout != '');
 
-  let bodyData = '';
+  let data = '';
   req.on('data', chunk => {
-    bodyData += chunk;
+    data += chunk;
   })
 
-  new Promise( (res, rej) => {
-    req.on('end', () => {
-      bodyData = JSON.parse(bodyData);
-      console.log('MESSAGE TEXT :' + bodyData.message.text);
-      res();
-    })
+  req.on('end', () => {
+    data = JSON.parse(data);
+    console.log('..............................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................');
+    console.log(data);
+    return Promise.resolve(data);
   }).then(data => {
-      return Promise.all([
+      rerurn Promise.all([
         User.findById(routs[1]).exec()
         .then(user => Promise.resolve(user)),
         User.findById(routs[3]).exec()
         .then(user => Promise.resolve(user)),
       ])
-  }).then(data => {
+    }).then(data => {
     user = data[0];
     user2 = data[1];
 
@@ -714,19 +679,16 @@ const sendMessage = (req, res) => {
       user.dialogs.forEach(item => {
         if(jointDialog) return;
         let jointDialogIndex = user2.dialogs.indexOf(item);
-        console.log('IS jointDialogIndex :' + jointDialogIndex);
         if(~jointDialogIndex) {
-          console.log('DIALOG IS INSTEAD');
           jointDialog = true;
           jointDialogId = user2.dialogs[jointDialogIndex];
         };
       });
       if(jointDialog){
         Dialog.findById(jointDialogId).exec()
-          .then(dialog => {
-            resolve(dialog)
-          });
+          .then(dialog => resolve(dialog));
       } else {
+
         Dialog.create({
           user_id1: user.id,
           user_id2: user2.id,
@@ -734,67 +696,44 @@ const sendMessage = (req, res) => {
           date: new Date(),
           dateLastModified: new Date(),
         }).then(dialog => {
-          Promise.all([
 
-            User.findByIdAndUpdate(routs[1], 
-              {dialogs: user.dialogs.concat(dialog._id)}
-            ).exec().then(),
-            User.findByIdAndUpdate(routs[3], 
-              {dialogs: user2.dialogs.concat(dialog._id)}
-            ).exec().then(),
+          User.findByIdAndUpdate(routs[1], 
+            {dialogs: user.dialogs.concat(dialog._id)}
+          ).exec().then();
+          User.findByIdAndUpdate(routs[3], 
+            {dialogs: user2.dialogs.concat(dialog._id)}
+          ).exec().then();
+          //
+          // User.findByIdAndUpdate(routs[1], 
+          //   {dialogs: []}
+          // ).exec().then();
+          // User.findByIdAndUpdate(routs[3], 
+          //   {dialogs: []}
+          // ).exec().then();
+          // Dialog.remove({}, ()=>{});
 
-
-          ]).then(res => {
-            console.log('CREATE NEW DIALOG');
-            resolve(dialog);
-          });
         });
+        resolve(dialog);
       }
     });
   }).then(dialog => {
-    let isBodyData = bodyData.message.text;
-    console.log('isbodydata: ' + isBodyData);
-    if(isBodyData){
-      let messages = dialog.messages;
-      messages.push({
-        id: uuidv4(),
-        userId: routs[1],
-        text: 'huy', 
-        date: new Date(),
-      });
-      Dialog.findByIdAndUpdate(dialog._id, {messages}).exec()
-        .then(dialog => {
-          Dialog.find().exec()
-            .then(dialogs => {
-              console.log('ADD NEW MESSAGE TO DIALOG: ' + dialog._id);
-              return dialog;
-            });
-        })
-    } else {
-      console.log('MESSAGE IS EMPTY');
-      return dialog;
-    }
-  }).then(dialog => {
-    console.log(user.dialogs);
-    console.log(user2.dialogs);
-    Dialog.find().then(dialogs => {
-      console.log('DIALOGS ' + dialog)
+    let messages = dialog.messages;
+    messages.push({
+      id: uuidv4(),
+      userId: routs[1],
+      text: 'huy', 
+      date: new Date(),
     });
-
-    // User.findByIdAndUpdate(routs[1], 
-    //   {dialogs: []}
-    // ).exec().then();
-    // User.findByIdAndUpdate(routs[3], 
-    //   {dialogs: []}
-    // ).exec().then();
-    //
-    // Dialog.remove({}, ()=>{});
-
-    res.end({
-      result_code: 0,
-      id: dialog._id,
-    });
-  });
+    Dialog.findByIdAndUpdate(dialog._id, {messages}).exec()
+      .then(dialog => {
+        console.log(user.dialogs);
+        console.log(user2.dialogs);
+        Dialog.find().exec()
+          .then(dialogs => {
+            console.log('DIALOGS ' + dialogs)
+          });
+      })
+  })
 }
 
 
