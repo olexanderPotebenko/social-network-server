@@ -9,4 +9,8 @@ const DialogSchema = new mongoose.Schema({
 });
 mongoose.model('Dialog', DialogSchema);
 
-
+//message = {
+//message_id,
+//user_id
+//date,
+//text,

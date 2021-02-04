@@ -637,12 +637,12 @@ const getDialogs = (req, res) => {
                 user_id = dialog.user_id2;
               else
                 user_id = dialog.user_id1;
-              console.log(dialog);
+              //console.log(dialog);
               return User.findById(user_id).exec()
               .then(user => {
                 console.log('/////////////');
-                console.log(user);
-                console.log(dialog);
+                //console.log(user);
+                //console.log(dialog);
                 console.log('/////////////');
                 return {
                   dialog_id: dialog._id,
@@ -664,12 +664,12 @@ const getDialogs = (req, res) => {
         Promise.all([...dialogs])
           .then(dialogs => {
 
-            console.log(dialogs);
+            //console.log(dialogs);
             let data = {
               result_code: 0,
               dialogs,
             };
-            console.log('DIALOGS :' + dialogs);
+            //console.log('DIALOGS :' + dialogs);
             res.end(JSON.stringify({
               data,
             }) );
@@ -687,11 +687,13 @@ const sendMessage = (req, res) => {
 
   let bodyData = '';
   req.on('data', chunk => {
+    console.log(chunk);
     bodyData += chunk;
-  })
+  });
 
   new Promise( (res, rej) => {
     req.on('end', () => {
+      console.log(bodyData);
       bodyData = JSON.parse(bodyData);
       console.log('MESSAGE TEXT :' + bodyData.message.text);
       res();
@@ -759,26 +761,23 @@ const sendMessage = (req, res) => {
       messages.push({
         id: uuidv4(),
         userId: routs[1],
-        text: 'huy', 
+        text: isBodyData, 
         date: new Date(),
       });
-      Dialog.findByIdAndUpdate(dialog._id, {messages}).exec()
+      return Dialog.findByIdAndUpdate(dialog._id, {messages, dateLastModified: new Date()}).exec()
         .then(dialog => {
-          Dialog.find().exec()
-            .then(dialogs => {
-              console.log('ADD NEW MESSAGE TO DIALOG: ' + dialog._id);
-              return dialog;
-            });
+          console.log('ADD NEW MESSAGE TO DIALOG: ' + dialog._id);
+          return dialog;
         })
     } else {
       console.log('MESSAGE IS EMPTY');
       return dialog;
     }
   }).then(dialog => {
-    console.log(user.dialogs);
-    console.log(user2.dialogs);
+    // console.log(user.dialogs);
+    // console.log(user2.dialogs);
     Dialog.find().then(dialogs => {
-      console.log('DIALOGS ' + dialog)
+      //console.log('DIALOGS ' + dialog)
     });
 
     // User.findByIdAndUpdate(routs[1], 
@@ -790,16 +789,35 @@ const sendMessage = (req, res) => {
     //
     // Dialog.remove({}, ()=>{});
 
-    res.end({
+    console.log('SEND REQUEST');
+    res.end(JSON.stringify({
       result_code: 0,
       id: dialog._id,
-    });
+    }));
   });
 }
 
 
-const getMessages = (req, res) => {
+const getDialog = (req, res) => {
 
+  let routs = url.parse(req.url, true).pathname.split('/')
+    .filter(rout => rout != '');
+
+  console.log('GET DIALOG');
+  console.log(req.url);
+  Dialog.findById(routs[3]).exec()
+    .then(dialog => {
+      let user_id = routs[1] === dialog.user_id1 ? dialog.user_id2: dialog.user_id1;
+      console.log(dialog);
+      let data = {
+        result_code: 0,
+        user_id,
+        date: dialog.date,
+        dateLastModified: dialog.dateLastModified,
+        messages: dialog.messages,
+      };
+      res.end(JSON.stringify({data}) );
+    });
 }
 
 module.exports = {
@@ -817,8 +835,8 @@ module.exports = {
   getPostPicture,
   //message
   getDialogs: authMiddleware(getDialogs),
+  getDialog: authMiddleware(getDialog),
   sendMessage: authMiddleware(sendMessage),
-  getMessages: authMiddleware(getMessages),
   //commons
   getAvatarPicture,
   getAvatarPicture2,

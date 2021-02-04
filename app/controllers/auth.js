@@ -64,14 +64,14 @@ const signIn = (req, res, auth_users) => {
 };
 
 const signUp = (req, res) => {
-  console.log('111111');
+  console.log('SIGN UP');
   let data = [];
   req.on('data', chunk => {
     data.push(chunk)}) ;
   req.on('end', () => {
     data = JSON.parse(data);
     //проверка пришедших данных на валидность
-    console.log(data);
+    //console.log(data);
     let is_valid = true;
     if(data.first_name == '' || data.first_name == undefined ||
       data.last_name == '' || data.last_name == undefined ||
