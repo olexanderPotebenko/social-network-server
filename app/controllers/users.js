@@ -629,38 +629,45 @@ const getDialogs = (req, res) => {
     .then(user => {
       if(user){
         let dialogs = user.dialogs;
+        console.log('DIALOG COUNT :' + dialogs);
+        // dialogs = dialogs.filter(item => item != '602001e445452eca905fbfed');
+        // dialogs = dialogs.filter(item => item != '601ff65645452eca905fbfea');
+        // dialogs = dialogs.filter(item => item != '601ab975ec457513035d1935');
+        // dialogs = dialogs.filter(item => item != '601ab96fec457513035d1934');
+        // dialogs = dialogs.filter(item => item != '601ff7d045452eca905fbfeb');
+        // dialogs = dialogs.filter(item => item != '601ff99b45452eca905fbfec');
+        // dialogs = dialogs.filter(item => item != '601f2885bf439f7603903192');
+        // dialogs = dialogs.filter(item => item != '601f27367ad5f46a463f7ec9');
+        // User.findByIdAndUpdate(routs[1], {dialogs}).exec()
+        //   .then(user => {
         dialogs = dialogs.map(dialog_id => {
           return Dialog.findById(dialog_id).exec()
             .then(dialog => {
-              let user_id;
-              if(dialog.user_id1 === routs[1])
-                user_id = dialog.user_id2;
-              else
-                user_id = dialog.user_id1;
-              //console.log(dialog);
-              return User.findById(user_id).exec()
-              .then(user => {
-                console.log('/////////////');
-                //console.log(user);
+              if(dialog) {
+                let user_id;
+                if(dialog.user_id1 === routs[1])
+                  user_id = dialog.user_id2;
+                else
+                  user_id = dialog.user_id1;
                 //console.log(dialog);
-                console.log('/////////////');
-                return {
-                  dialog_id: dialog._id,
-                  lastMessage: dialog.messages[dialog.messages.length -1],
-                  user_id,
-                  user_avatar: user.photos.small,
-                  user_name: user.name,
-                  dateLastModified: dialog.dateLastModified,
-                };
-              });
+                return User.findById(user_id).exec()
+                  .then(user => {
+                    console.log('/////////////');
+                    //console.log(user);
+                    //console.log(dialog);
+                    console.log('/////////////');
+                    return {
+                      dialog_id: dialog._id,
+                      lastMessage: dialog.messages[dialog.messages.length -1],
+                      user_id,
+                      user_avatar: user.photos.small,
+                      user_name: user.name,
+                      dateLastModified: dialog.dateLastModified,
+                    };
+                  });
+              }
             })
         });
-        //dialog = {
-        //dialog_id,
-        //lastMessage,
-        //user_id,
-        //user_avatar,
-        //}
         Promise.all([...dialogs])
           .then(dialogs => {
 
@@ -674,6 +681,7 @@ const getDialogs = (req, res) => {
               data,
             }) );
           });
+        //  })
       }else {
         res.end(JSON.stringify({result_code: 1, message: 'this user does not exist'}) );
       };
@@ -699,12 +707,12 @@ const sendMessage = (req, res) => {
       res();
     })
   }).then(data => {
-      return Promise.all([
-        User.findById(routs[1]).exec()
-        .then(user => Promise.resolve(user)),
-        User.findById(routs[3]).exec()
-        .then(user => Promise.resolve(user)),
-      ])
+    return Promise.all([
+      User.findById(routs[1]).exec()
+      .then(user => Promise.resolve(user)),
+      User.findById(routs[3]).exec()
+      .then(user => Promise.resolve(user)),
+    ])
   }).then(data => {
     user = data[0];
     user2 = data[1];
@@ -807,16 +815,66 @@ const getDialog = (req, res) => {
   console.log(req.url);
   Dialog.findById(routs[3]).exec()
     .then(dialog => {
+      if(dialog) {
       let user_id = routs[1] === dialog.user_id1 ? dialog.user_id2: dialog.user_id1;
+      if(dialog.messages.length)
+        console.log('LAST MESSAGE: ' + dialog.messages[dialog.messages.length -1].text);
+      User.findById(user_id).exec()
+        .then(user => {
+          let data = {
+            result_code: 0,
+            dialog_id: dialog._id,
+            user_id,
+            date: dialog.date,
+            dateLastModified: dialog.dateLastModified,
+            messages: dialog.messages,
+            user_avatar: user.photos.small,
+            user_name: user.name,
+          };
+          res.end(JSON.stringify({data}) );
+        });
+      } else {
+        res.end(JSON.stringify({data: {result_code: 1}}));
+      }
+    });
+}
+
+const deleteDialog = (req, res) => {
+
+  const routs = url.parse(req.url, true).pathname.split('/')
+    .filter(rout => rout != '');
+  console.log('DELETE_DIALOG');
+  console.log(routs);
+  Dialog.findByIdAndRemove(routs[3]).exec()
+    .then(dialog => {
       console.log(dialog);
-      let data = {
-        result_code: 0,
-        user_id,
-        date: dialog.date,
-        dateLastModified: dialog.dateLastModified,
-        messages: dialog.messages,
-      };
-      res.end(JSON.stringify({data}) );
+      Promise.all([
+        User.findById(dialog.user_id1).exec()
+        .then(user => {
+          console.log(user);
+          let dialogs = user.dialogs.filter(dialog_id => dialog_id != routs[3]);
+          console.log(routs[3]);
+          console.log(dialogs);
+          User.findByIdAndUpdate(user._id, {dialogs}).exec()
+            .then(res => {
+              console.log(res);
+              return res;
+            })
+        }),
+        User.findById(dialog.user_id2).exec()
+        .then(user => {
+          let dialogs = user.dialogs.filter(dialog_id => dialog_id != routs[3]);
+          User.findByIdAndUpdate(user._id, {dialogs}).exec()
+            .then(res => res);
+        }),
+      ]).then(resolve => {
+        let user_id1 = resolve[0],
+          user_id2 = resolve[1];
+        let data = {
+          result_code: 0,
+        };
+        res.end(JSON.stringify({data}));
+      });
     });
 }
 
@@ -837,6 +895,7 @@ module.exports = {
   getDialogs: authMiddleware(getDialogs),
   getDialog: authMiddleware(getDialog),
   sendMessage: authMiddleware(sendMessage),
+  deleteDialog: authMiddleware(deleteDialog),
   //commons
   getAvatarPicture,
   getAvatarPicture2,

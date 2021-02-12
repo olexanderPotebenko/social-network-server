@@ -88,7 +88,7 @@ const signUp = (req, res) => {
           if(!user){
             User.create({
               password: bcrypt.hashSync(data.password, 10),
-              name: data.first_name + data.last_name,
+              name: data.first_name + ' ' + data.last_name,
               email: data.email,
               photos: {
                 small: '',
