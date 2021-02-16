@@ -621,9 +621,9 @@ const profileUpdate = (req, res) => {
 
 const getDialogs = (req, res) => {
 
-  console.log('GET DIALOGS');
   let routs = url.parse(req.url, true).pathname.split('/')
     .filter(rout => rout != '');
+  console.log('GET DIALOGS: ' + routs[1]);
 
   User.findById(routs[1]).exec()
     .then(user => {
@@ -699,11 +699,12 @@ const sendMessage = (req, res) => {
     bodyData += chunk;
   });
 
+  try {
   new Promise( (res, rej) => {
     req.on('end', () => {
       console.log(bodyData);
       bodyData = JSON.parse(bodyData);
-      console.log('MESSAGE TEXT :' + bodyData.message.text);
+      bodyData.message && console.log('MESSAGE TEXT :' + bodyData.message.text);
       res();
     })
   }).then(data => {
@@ -770,6 +771,7 @@ const sendMessage = (req, res) => {
         id: uuidv4(),
         userId: routs[1],
         text: isBodyData, 
+        read: false,
         date: new Date(),
       });
       return Dialog.findByIdAndUpdate(dialog._id, {messages, dateLastModified: new Date()}).exec()
@@ -801,8 +803,12 @@ const sendMessage = (req, res) => {
     res.end(JSON.stringify({
       result_code: 0,
       id: dialog._id,
+      user_id: routs[3],
     }));
   });
+  } catch (e) {
+    console.log(e.mess);
+  }
 }
 
 
@@ -878,6 +884,46 @@ const deleteDialog = (req, res) => {
     });
 }
 
+const readMessages = (req, res) => {
+  const routs = url.parse(req.url, true).pathname.split('/')
+    .filter(rout => rout != '');
+  console.log('READ MESSAGES');
+  console.log(routs);
+
+  let bodyData = '';
+  req.on('data', chunk => {
+    console.log(chunk);
+    bodyData += chunk;
+  });
+
+  new Promise( (resolve, reject) => {
+    req.on('end', () => {
+      console.log(bodyData);
+      bodyData = JSON.parse(bodyData);
+      if(bodyData.messages && bodyData.messages.length)
+        resolve(bodyData.messages);
+      else reject();
+    })
+  }).then(messages => {
+    return Dialog.findById(routs[3]).exec()
+      .then(dialog => {
+        return Dialog.findByIdAndUpdate(routs[3], 
+          {messages: dialog.messages.map(mess => 
+            messages.find(item => mess.dialog_id === item.dialog_id)? {...mess, read: true}: mess),
+          })
+      })
+  },
+    () => {
+     // res.end(JSON.stringify({data: {result_code: 1}}));
+    }
+  ).then(resolve => {
+      res.end(JSON.stringify({data: {result_code: 0}}));
+  });
+
+  console.log('READ MESSAGES');
+  //res.end(JSON.stringify({data: {result_code: 0}}));
+}
+
 module.exports = {
   getOne: authMiddleware(getOneAuthorized, getOne),
   getUsers: authMiddleware(getUsersAuthorized, getUsers),
@@ -896,6 +942,7 @@ module.exports = {
   getDialog: authMiddleware(getDialog),
   sendMessage: authMiddleware(sendMessage),
   deleteDialog: authMiddleware(deleteDialog),
+  readMessages: authMiddleware(readMessages),
   //commons
   getAvatarPicture,
   getAvatarPicture2,
