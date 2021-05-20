@@ -17,12 +17,12 @@ const signIn = (req, res, auth_users) => {
     'evgeniya.pusarchuk@gmail.com': false,
     'viktoriya.lukianenko@gmail.com': false,
     */
-    if(auth_users['alina.lukianenko@gmail.com']){
-      email = 'viktoriya.dyachenko@gmail.com';
-      auth_users['alina.lukianenko@gmail.com'] = false;
-    }else{
-      auth_users['alina.lukianenko@gmail.com'] = true;
-    }
+    // if(auth_users['alina.lukianenko@gmail.com']){
+    //   email = 'viktoriya.dyachenko@gmail.com';
+    //   auth_users['alina.lukianenko@gmail.com'] = false;
+    // }else{
+    //   auth_users['alina.lukianenko@gmail.com'] = true;
+    // }
 
     User.findOne({email})
       .exec()
