@@ -444,6 +444,16 @@ const getPostPicture = (req, res) => {
   }); 
 };
 
+const getAvatarLink = (req, res) => {
+  console.log('getAvatarLink');
+  let routs = url.parse(req.url, true).pathname.split('/').filter(rout => rout != '');
+  User.findById(routs[1]).exec()
+    .then(user => {
+      res.end(JSON.stringify({photo: user.photos.small, result_code: 0}));
+    });
+};
+
+
 const getAvatarPicture = (req, res) => {
 
   console.log('getAvatarPicture');
@@ -944,6 +954,7 @@ module.exports = {
   deleteDialog: authMiddleware(deleteDialog),
   readMessages: authMiddleware(readMessages),
   //commons
+  getAvatarLink,
   getAvatarPicture,
   getAvatarPicture2,
   profileUpdate: authMiddleware(profileUpdate),

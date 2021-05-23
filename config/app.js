@@ -1,9 +1,12 @@
 //глобальные константы приложения
+const port = 8080,
+  host = '78.140.136.124';
+
 module.exports = {
-    port: 8080,
-    address: '127.0.0.1',
-    base_address: 'http://127.0.0.1:8080/',
-    mongo_uri: 'mongodb://localhost:27017/online-store',
-    secret_jwt: 'lylyly',
+  port,
+  address: host,
+  base_address: `http://${host}:${port}/`,
+  mongo_uri: 'mongodb://localhost:27017/online-store',
+  secret_jwt: 'lylyly',
 };
 
